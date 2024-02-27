@@ -17,7 +17,7 @@ async function checkPassword(force = false): Promise<void> {
             {
                 name: "master_password",
                 type: "input",
-                validate: function (value) {
+                validate: function (value: string) {
                     if (value.length > 8) {
                         return true;
                     }
