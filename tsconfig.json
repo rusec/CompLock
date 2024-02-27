@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "incremental": true,
+        "target": "es2022",
+        "module": "commonjs",
+        "allowJs": true,
+        "checkJs": false,
+        "outDir": "./dist",
+        "sourceMap": true,
+        "lib": [ "dom", "es2015", "es2016", "es2017" ],
+        "strict": true,
+        "alwaysStrict": true,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "baseUrl": ".",
+        "resolveJsonModule": true,
+    },
+    "include": ["**/*", "..webpack.config.js"],
+    "exclude": ["releases/**", "dist/**", "build/**", "misc/**", "testing/**", "test/*"]
+}

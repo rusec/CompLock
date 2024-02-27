@@ -1,0 +1,10 @@
+Name,IP Address,Username,Password,OS Type,
+bob,192.168.1.1,user1,password1,windows
+ross,192.168.1.2,user2,password2,freeBSD
+micheal,192.168.1.3,user3,password3,linux
+lee,192.168.1.4,user1,password1,linux
+mike,192.168.1.5,user2,password2,linux
+lamp,192.168.1.6,user3,password3,linux
+wp-1,192.168.1.7,user1,password1,linux
+wp-2,192.168.1.8,user2,password2,linux
+wp-3,192.168.1.9,user3,password3,linux

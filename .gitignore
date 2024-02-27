@@ -1,0 +1,45 @@
+# Ignore Node Modules
+node_modules
+node_modules/**
+node_modules/*
+
+dist
+dist/*
+dist/**
+
+
+misc
+
+# Ignore db
+muffins
+pineapples
+
+# Ignore Computers
+computers.csv
+computers_old*.csv
+
+# Files
+
+phone.txt
+index_test.js
+log.log
+
+# Compiled
+
+
+
+phonea.txt
+
+testing.js
+
+
+
+.vscode
+
+scans
+
+# IDE Files
+.idea/
+
+# MacOS DS_Store
+releases/latest/.DS_Store
