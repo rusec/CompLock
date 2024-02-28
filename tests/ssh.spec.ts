@@ -1,4 +1,4 @@
-import { makeConnection } from "src/modules/util/ssh_utils";
+import { makeConnection } from "../src/modules/util/ssh_utils";
 import { computers, computerUsers } from "./computers";
 import { assert } from "console";
 
