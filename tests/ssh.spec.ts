@@ -14,22 +14,25 @@ for (let computer of computers) {
             if (ssh) await ssh.close();
         });
 
-        it("Can deploy SSH key to Server", async () => {
-            let ssh = await makeConnection(user, 3000, 3);
-            if (!ssh) {
-                throw new Error("Unable to connect to target server");
-            }
-            let sshkey = await ejectSSHkey(ssh, computer["OS Type"]);
-            assert.ok(sshkey, "Unable to enject SSH key");
-            ssh.close();
-            it("Can remove SSH key to Server", async () => {
+        describe("SSH Key", () => {
+            it("Can deploy to Server", async () => {
+                let ssh = await makeConnection(user, 3000, 3);
+                if (!ssh) {
+                    throw new Error("Unable to connect to target server");
+                }
+                let sshkey = await ejectSSHkey(ssh, computer["OS Type"]);
+                assert.ok(sshkey, "Unable to inject SSH key");
+                await ssh.close();
+            });
+
+            it("Can remove from Server", async () => {
                 let ssh = await makeConnection(user, 3000, 3);
                 if (!ssh) {
                     throw new Error("Unable to connect to target server");
                 }
                 let sshkey = await removeSSHkey(ssh, computer["OS Type"]);
                 assert.ok(sshkey, "Unable to remove SSH key");
-                ssh.close();
+                await ssh.close();
             });
         });
     });
