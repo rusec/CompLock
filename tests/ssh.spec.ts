@@ -41,7 +41,7 @@ for (let computer of computers) {
         });
 
         describe("Password Test", () => {
-            it("test current password", async () => {
+            it("Test Current password", async () => {
                 let ssh = await makeConnection(user, 3000, 3);
                 if (!ssh) {
                     throw new Error("Unable to connect to target server");
@@ -51,7 +51,7 @@ for (let computer of computers) {
                 assert.ok(password_active, "User Password Check was false");
                 await ssh.close();
             });
-            it("test incorrect password", async () => {
+            it("Test Incorrect password", async () => {
                 let ssh = await makeConnection(user, 3000, 3);
                 if (!ssh) {
                     throw new Error("Unable to connect to target server");
@@ -60,7 +60,7 @@ for (let computer of computers) {
                 assert.ok(!password_active, "User Password Check was true");
                 await ssh.close();
             });
-            it("Can Change Password", async () => {
+            it("Can Change Password (Runs Password Script,)", async () => {
                 if (!defaultPassword) {
                     throw new Error("Unable to change password no default password");
                 }
@@ -70,6 +70,7 @@ for (let computer of computers) {
                 if (typeof passwordResult === "string") {
                     return;
                 }
+                console.log("Change Password Back!");
 
                 currUser.password = defaultPassword + "123";
                 let passwordResultBack = await changePasswordOf(computer, currUser, defaultPassword);

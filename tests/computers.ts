@@ -26,6 +26,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.12",
+        Name: "Centos 8",
+        "OS Type": "linux",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Centos 8",
+                ipaddress: "192.168.15.12",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Centos8",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
