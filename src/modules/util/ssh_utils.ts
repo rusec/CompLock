@@ -93,6 +93,7 @@ async function makeConnection(user: User, timeout = 3000, retryCount = 5, retryD
         recentlyConnection.set(user.ipaddress, true);
         return ssh;
     } catch (error) {
+        console.log(error);
         return false;
     }
 }
