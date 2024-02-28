@@ -56,7 +56,7 @@
     },
     "scripts": {
         "test": "mocha -r ts-node/register test/**/*.spec.ts",
-        "test_integration": "mocha -r --timeout 15000 ts-node/register tests/**/*.spec.ts ",
+        "test_integration": "mocha -r ts-node/register  --timeout 30000 tests/**/*.spec.ts ",
         "start": "tsc && cross-env DEV=true node --inspect --trace-warnings ./dist/Tortilla.js",
         "start_linux": "tsc && cross-env DEV=true node --inspect --trace-warnings ./dist/Tortilla.js",
         "build_linux": "export SALT=$(node -e \"const crypto = require('crypto'); console.log(crypto.randomBytes(256).toString('hex'));\") && export SALT_2=$(node -e \"const crypto = require('crypto'); console.log(crypto.randomBytes(256).toString('hex'));\") && node ./build/prebuild.js $SALT $SALT_2 && tsc && pkg --out-path releases/latest/arm -t \"node16-linux-arm64,node16-win-arm64,node16-macos-arm64\" -C Gzip -c package.json ./dist/Tortilla.js && node ./build/postbuild.js $SALT $SALT_2 && echo 'Binaries are located in releases/latest' ",
