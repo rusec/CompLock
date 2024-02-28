@@ -10,7 +10,7 @@ for (let computer of computers) {
         }
         it("Can Make Connection to server", async () => {
             let ssh = await makeConnection(user, 3000, 3);
-            assert(ssh, "Unable to find ");
+            assert(ssh, "Unable to connect to target server");
             if (ssh) await ssh.close();
         });
     });
