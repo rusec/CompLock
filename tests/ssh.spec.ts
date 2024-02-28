@@ -1,6 +1,6 @@
 import { makeConnection } from "../src/modules/util/ssh_utils";
 import { computers, computerUsers } from "./computers";
-import { assert } from "console";
+import assert from "assert";
 
 for (let computer of computers) {
     describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer["IP Address"]}`, () => {
@@ -10,7 +10,7 @@ for (let computer of computers) {
         }
         it("Can Make Connection to server", async () => {
             let ssh = await makeConnection(user, 3000, 3);
-            assert(ssh, "Unable to connect to target server");
+            assert.ok(ssh, "Unable to connect to target server");
             if (ssh) await ssh.close();
         });
     });
