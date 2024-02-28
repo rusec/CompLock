@@ -1,4 +1,4 @@
-import { changePasswordOf } from "src/modules/password/change_passwords";
+import { changePasswordOf } from "../src/modules/password/change_passwords";
 import { detect_hostname, detect_os, ejectSSHkey, makeConnection, removeSSHkey, testPassword } from "../src/modules/util/ssh_utils";
 import { computers } from "./computers";
 import assert from "assert";
