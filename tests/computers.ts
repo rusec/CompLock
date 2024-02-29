@@ -47,6 +47,48 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.13",
+        Name: "Centos 7",
+        "OS Type": "linux",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Centos 7",
+                ipaddress: "192.168.15.13",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Centos7",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
+    {
+        ipaddress: "192.168.15.14",
+        Name: "Freebsd 13",
+        "OS Type": "freebsd",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Freebsd 13",
+                ipaddress: "192.168.15.14",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Freebsd 13",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
