@@ -7,8 +7,8 @@ describe("DataBase", () => {
         });
     });
 
-    describe("Add Computer", () => {
-        it("should add a computer successfully", async () => {
+    describe("addTarget", () => {
+        it("should add a target successfully", async () => {
             const ip = "192.168.1.1";
             const os = "linux";
             const hostname = "myhost";
@@ -18,7 +18,7 @@ describe("DataBase", () => {
             assert.ok(result);
         });
     });
-    describe("Add User", () => {
+    describe("addUser", () => {
         it("should add a user successfully", async () => {
             const ip = "192.168.1.1";
             const username = "testuser";
@@ -40,6 +40,19 @@ describe("DataBase", () => {
             const result = await db.addUser(ip, username, password, hostname, domain);
 
             assert.ok(!result, "added user to computer that doesnt exist");
+        });
+    });
+    describe("addTargetAndUser", () => {
+        it("should add a target and user", async () => {
+            const ip = "192.168.1.3";
+            const os = "linux";
+            const hostname = "myhost";
+            const domain = "example.com";
+            const username = "username";
+            const password = "password";
+            const result = await db.addTargetAndUser(hostname, ip, username, password, os, domain);
+
+            assert.ok(result);
         });
     });
 });
