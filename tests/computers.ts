@@ -110,6 +110,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.16",
+        Name: "Ubuntu 18",
+        "OS Type": "linux",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Ubuntu 18",
+                ipaddress: "192.168.15.16",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Ubuntu 15.4",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
