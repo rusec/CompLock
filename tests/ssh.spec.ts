@@ -83,17 +83,22 @@ for (let computer of computers) {
             });
         });
         describe("Command Utils", async () => {
-            let ssh = await makeConnection(user, 3000, 3);
-            if (!ssh) {
-                throw new Error("Unable to connect to target server");
-            }
-
             it("runCommandNotExpect", async () => {
+                let ssh = await makeConnection(user, 3000, 3);
+                if (!ssh) {
+                    throw new Error("Unable to connect to target server");
+                }
                 let result = await runCommandNotExpect(ssh, "hostname", "error");
                 assert.ok(!(typeof result === "string"), "Got Error: " + result.toString());
+                await ssh.close();
             });
             it("runCommand", async () => {
+                let ssh = await makeConnection(user, 3000, 3);
+                if (!ssh) {
+                    throw new Error("Unable to connect to target server");
+                }
                 let result = await runCommand(ssh, "echo hello", "hello");
+                await ssh.close();
                 if (typeof result === "string") {
                     assert.ok(false, result);
                     return;
@@ -101,14 +106,23 @@ for (let computer of computers) {
                 assert.ok(result, "Command returned false");
             });
             it("runCommandNoExpect", async () => {
+                let ssh = await makeConnection(user, 3000, 3);
+                if (!ssh) {
+                    throw new Error("Unable to connect to target server");
+                }
                 let result = await runCommandNoExpect(ssh, "exit 1");
                 assert.ok(result, "Got output on expect no output");
+                await ssh.close();
             });
             it("getOutput", async () => {
+                let ssh = await makeConnection(user, 3000, 3);
+                if (!ssh) {
+                    throw new Error("Unable to connect to target server");
+                }
                 let result = await getOutput(ssh, "echo This Should be Echoed");
                 assert.ok(result.includes("This Should be Echoed"), "Got Error: " + result);
+                await ssh.close();
             });
-            await ssh.close();
         });
 
         describe("SSH Key", () => {
