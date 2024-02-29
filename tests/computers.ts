@@ -131,6 +131,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.17",
+        Name: "Alpine 3.13",
+        "OS Type": "linux",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Alpine 3.13",
+                ipaddress: "192.168.15.17",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Alpine 3.13",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
