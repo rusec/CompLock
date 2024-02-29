@@ -12,16 +12,11 @@ const defaultPassword = process.env.DEFAULT;
 
 for (let computer of computers) {
     console.log("\n\n\n");
-    describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, async () => {
+    describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, () => {
         let user = computer.users[0];
         if (!user) {
             throw new Error("Unable to find User");
         }
-        let ssh = await makeConnection(user, 3000, 3);
-        if (!ssh) {
-            throw new Error("Unable to connect to server, will not continue");
-        }
-        await ssh.close();
         it("Can Make Connection to server", async () => {
             let ssh = await makeConnection(user, 3000, 3);
             assert.ok(ssh, "Unable to connect to target server");
