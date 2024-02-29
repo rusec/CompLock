@@ -1,3 +1,4 @@
+import { getOutput, runCommand, runCommandNoExpect, runCommandNotExpect } from "../src/modules/util/run_command";
 import { changePasswordOf } from "../src/modules/password/change_passwords";
 import { detect_hostname, detect_os, ejectSSHkey, makeConnection, removeSSHkey, testPassword } from "../src/modules/util/ssh_utils";
 import { computers } from "./computers";
@@ -8,6 +9,7 @@ dotenv.config();
 const defaultPassword = process.env.DEFAULT;
 
 for (let computer of computers) {
+    console.log("\n\n\n");
     describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, () => {
         let user = computer.users[0];
         if (!user) {
@@ -79,6 +81,34 @@ for (let computer of computers) {
                     return;
                 }
             });
+        });
+        describe("Command Utils", async () => {
+            let ssh = await makeConnection(user, 3000, 3);
+            if (!ssh) {
+                throw new Error("Unable to connect to target server");
+            }
+
+            it("runCommandNotExpect", async () => {
+                let result = await runCommandNotExpect(ssh, "hostname", "error");
+                assert.ok(!(typeof result === "string"), "Got Error: " + result.toString());
+            });
+            it("runCommand", async () => {
+                let result = await runCommand(ssh, "echo hello", "hello");
+                if (typeof result === "string") {
+                    assert.ok(false, result);
+                    return;
+                }
+                assert.ok(result, "Command returned false");
+            });
+            it("runCommandNoExpect", async () => {
+                let result = await runCommandNoExpect(ssh, "exit 1");
+                assert.ok(result, "Got output on expect no output");
+            });
+            it("getOutput", async () => {
+                let result = await getOutput(ssh, "echo This Should be Echoed");
+                assert.ok(result.includes("This Should be Echoed"), "Got Error: " + result);
+            });
+            await ssh.close();
         });
 
         describe("SSH Key", () => {
