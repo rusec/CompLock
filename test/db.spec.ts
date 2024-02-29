@@ -2,7 +2,7 @@ import assert from "assert";
 import db from "../src/db/db";
 describe("DataBase", () => {
     before(async () => {
-        db.writePassword("ThisIsTheTestPassword");
+        await db.writePassword("ThisIsTheTestPassword");
     });
     describe("Add User", () => {
         it("should add a user successfully", async () => {
