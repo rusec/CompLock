@@ -157,7 +157,6 @@ class DataBase {
 
             //check for configs
             let encryptedSSHPkey = await this.configs.get("privateKey");
-            console.log("Error after");
 
             let sshPkey = this.encrypt.decrypt(encryptedSSHPkey, this._getPKey(""));
             if (!sshPkey) {
