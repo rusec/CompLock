@@ -143,31 +143,38 @@ class DataBase {
                 }
             }
         } catch (error) {
-            this.log.log((error as Error).message, "error");
+            this.log.log((error as Error).message + "Unable to create DB", "error");
         }
     }
     async initDB() {
         try {
+            this.db = new Level(this.filePath);
             await this.db.open();
-
             this.configs = this.db.sublevel("app_configs");
+
             this.computers = this.db.sublevel("computers", { valueEncoding: "json" });
             this.users = this.db.sublevel("users", { valueEncoding: "json" });
 
             //check for configs
             let encryptedSSHPkey = await this.configs.get("privateKey");
+            console.log("Error after");
+
             let sshPkey = this.encrypt.decrypt(encryptedSSHPkey, this._getPKey(""));
             if (!sshPkey) {
                 throw new Error("unable to parse ssh private key resetting db");
             }
             this.ready = true;
         } catch (error) {
-            logger.log(error as string);
+            this.log.log((error as string) + " Unable to init DB");
             await this._resetDB();
         }
     }
 
-    private async _resetDB() {
+    private async _resetDB(tries = 10) {
+        if (tries === 0) {
+            logger.log("Unable to reset DB Closing Application");
+            process.exit(1);
+        }
         try {
             let encryptKey = this._getPKey("");
             await this.deleteDB();
@@ -178,7 +185,9 @@ class DataBase {
             fs.writeFileSync(this.process_dir + "/id_rsa.pub", keys.pubKey);
             this.ready = true;
         } catch (error) {
-            await this._resetDB();
+            this.log.log((error as string) + "Unable to reset DB tries: " + tries);
+
+            await this._resetDB(--tries);
         }
     }
     async deleteDB() {
@@ -279,7 +288,7 @@ class DataBase {
                 let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
                 if (pass) return pass;
                 return pass_hash;
-            })
+            });
             user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
                 if (typeof encryptionKey == "boolean") return pass_hash;
                 let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
@@ -330,7 +339,7 @@ class DataBase {
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
                     if (pass) return pass;
                     return pass_hash;
-                })
+                });
                 user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
                     if (typeof encryptionKey == "boolean") return pass_hash;
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
@@ -434,7 +443,6 @@ class DataBase {
         }
     }
 
-
     async updateComputers(old_key: string, new_key: string) {
         for await (const ip of this.computers.keys()) {
             let computer = await this.computers.get(ip);
@@ -455,6 +463,10 @@ class DataBase {
     }
 
     async writePassword(password_string: string): Promise<void> {
+        if (!this.ready) {
+            await delay(1000);
+            return this.writePassword(password_string);
+        }
         logger.log(`Request to update Master Password`, "info");
         let encryptionKey = this._getPKey("");
         const hash = await bcryptPassword(password_string);
@@ -462,7 +474,7 @@ class DataBase {
         //has old hash
         const old_hash = this.encrypt.decrypt(old_hash_encrypted, encryptionKey);
         // unable to read old_hash means either corruption or no password and db is just init
-        if (!old_hash || old_hash == '') {
+        if (!old_hash || old_hash == "") {
             await this.configs.put("master_hash", this.encrypt.encrypt(hash, encryptionKey));
             await this._resetDB();
             logger.log(`Reset Database with new password`, "error");
@@ -602,7 +614,7 @@ class DataBase {
             return false;
         }
     }
-    async writeUserFailedPassword(user_id:string, password:string){
+    async writeUserFailedPassword(user_id: string, password: string) {
         if (!password) {
             return false;
         }
@@ -622,29 +634,25 @@ class DataBase {
 
         await this.users.put(user.user_id, user);
         return true;
-
     }
-    
-    private async updateDomainUser(username:string, domain:string, passwordHash:string, skip_id:string){
-        for await(let id of this.users.keys()){
+
+    private async updateDomainUser(username: string, domain: string, passwordHash: string, skip_id: string) {
+        for await (let id of this.users.keys()) {
             try {
-                if(skip_id == id) continue;
-                let user = await this.users.get(id).catch(()=>undefined);
+                if (skip_id == id) continue;
+                let user = await this.users.get(id).catch(() => undefined);
                 if (!user) {
                     throw new Error("Unable to find user");
                 }
-                if(user.domain != domain || user.username != username) continue;
+                if (user.domain != domain || user.username != username) continue;
                 let oldPassword = user.password;
                 user.password = passwordHash;
                 user.oldPasswords ? user.oldPasswords.push(oldPassword) : [oldPassword];
-    
+
                 await this.users.put(user.user_id, user);
             } catch (error) {
-            this.log.error((error as Error).message);
-                
+                this.log.error((error as Error).message);
             }
-           
-        
         }
     }
     async writeUserResult(user_id: string, result: password_result) {
@@ -674,10 +682,9 @@ class DataBase {
 
             await this.users.put(user.user_id, user);
 
-            if(user.domain != '' || user.domain != undefined){
-                await this.updateDomainUser(user.username, user.domain, user.password, user.user_id)
+            if (user.domain != "" || user.domain != undefined) {
+                await this.updateDomainUser(user.username, user.domain, user.password, user.user_id);
             }
-
 
             return true;
         } catch (error) {
@@ -712,7 +719,7 @@ class DataBase {
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
                     if (pass) return pass;
                     return pass_hash;
-                })
+                });
                 user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
                     if (typeof encryptionKey == "boolean") return pass_hash;
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
@@ -765,7 +772,7 @@ class DataBase {
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
                     if (pass) return pass;
                     return pass_hash;
-                })
+                });
                 user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
                     if (typeof encryptionKey == "boolean") return pass_hash;
                     let pass = this.encrypt.decrypt(pass_hash, encryptionKey);

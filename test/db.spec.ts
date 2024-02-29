@@ -6,6 +6,7 @@ describe("DataBase", () => {
             db.writePassword("ThisIsTheTestPassword").then(() => resolve(true));
         });
     });
+
     describe("Add Computer", () => {
         it("should add a user successfully", async () => {
             const ip = "192.168.1.1";
