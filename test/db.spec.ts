@@ -8,7 +8,7 @@ describe("DataBase", () => {
     });
 
     describe("Add Computer", () => {
-        it("should add a user successfully", async () => {
+        it("should add a computer successfully", async () => {
             const ip = "192.168.1.1";
             const os = "linux";
             const hostname = "myhost";
