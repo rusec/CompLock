@@ -1,8 +1,10 @@
 import assert from "assert";
 import db from "../src/db/db";
 describe("DataBase", () => {
-    before(async () => {
-        await db.writePassword("ThisIsTheTestPassword");
+    before(() => {
+        return new Promise<boolean>((resolve) => {
+            db.writePassword("ThisIsTheTestPassword").then(() => resolve(true));
+        });
     });
     describe("Add Computer", () => {
         it("should add a user successfully", async () => {
