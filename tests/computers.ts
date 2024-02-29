@@ -89,6 +89,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.15",
+        Name: "Opensuse 15.4",
+        "OS Type": "linux",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Opensuse 15.4",
+                ipaddress: "192.168.15.15",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Opensuse 15.4",
+                username: "root",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
