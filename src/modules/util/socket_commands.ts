@@ -30,7 +30,7 @@ function sendCommandExpect(socket: Channel, command: string, expected: string): 
     });
 }
 /** THIS FILE IS FOR COMMANDS SENT BY A SOCKET CONNECTION */
-function socketGetOutput(socket: Channel, command: string) {
+function socketGetOutput(socket: Channel, command: string): Promise<string> {
     return new Promise((resolve, reject) => {
         let log = "";
 
@@ -241,4 +241,4 @@ function removeWindowsLoading(strLog: string): string {
     return stringWithoutLoadingLines.trim(); // Trim leading and trailing whitespace
 }
 
-export default { sendCommand, sendCommandAndInput, sendCommandExpect, sendCommandNoExpect, sendInput, sendInputExpect, socketGetOutput };
+export { sendCommand, sendCommandAndInput, sendCommandExpect, sendCommandNoExpect, sendInput, sendInputExpect, socketGetOutput };

@@ -1,4 +1,6 @@
 import { getOutput, runCommand, runCommandNoExpect, runCommandNotExpect } from "../src/modules/util/run_command";
+import { sendCommand, sendCommandExpect, sendCommandNoExpect, socketGetOutput } from "../src/modules/util/socket_commands";
+
 import { changePasswordOf } from "../src/modules/password/change_passwords";
 import { detect_hostname, detect_os, ejectSSHkey, makeConnection, removeSSHkey, testPassword } from "../src/modules/util/ssh_utils";
 import { computers } from "./computers";
@@ -10,11 +12,16 @@ const defaultPassword = process.env.DEFAULT;
 
 for (let computer of computers) {
     console.log("\n\n\n");
-    describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, () => {
+    describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, async () => {
         let user = computer.users[0];
         if (!user) {
             throw new Error("Unable to find User");
         }
+        let ssh = await makeConnection(user, 3000, 3);
+        if (!ssh) {
+            throw new Error("Unable to connect to server, will not continue");
+        }
+        await ssh.close();
         it("Can Make Connection to server", async () => {
             let ssh = await makeConnection(user, 3000, 3);
             assert.ok(ssh, "Unable to connect to target server");
@@ -82,7 +89,7 @@ for (let computer of computers) {
                 }
             });
         });
-        describe("Command Utils", async () => {
+        describe("Command Utils", () => {
             it("runCommandNotExpect", async () => {
                 let ssh = await makeConnection(user, 3000, 3);
                 if (!ssh) {
@@ -124,6 +131,54 @@ for (let computer of computers) {
                 await ssh.close();
             });
         });
+        if (computer["OS Type"] == "windows") {
+            describe("Socket Commands", () => {
+                it("sendCommand", async () => {
+                    let ssh = await makeConnection(user, 3000, 3);
+                    if (!ssh) {
+                        throw new Error("Unable to connect to target server");
+                    }
+                    let socket = await ssh.shell();
+                    let result = await sendCommand(socket, "exit", true);
+                    assert.ok(result.includes("exit"), "Didn't get expected output: " + result);
+                    await ssh.close();
+                });
+                it("sendCommandExpect", async () => {
+                    let ssh = await makeConnection(user, 3000, 3);
+                    if (!ssh) {
+                        throw new Error("Unable to connect to target server");
+                    }
+                    let socket = await ssh.shell();
+                    let result = await sendCommandExpect(socket, `powershell.exe`, `> `);
+                    assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    await ssh.close();
+                });
+                it("socketGetOutput", async () => {
+                    let ssh = await makeConnection(user, 3000, 3);
+                    if (!ssh) {
+                        throw new Error("Unable to connect to target server");
+                    }
+                    let socket = await ssh.shell();
+                    let result = await socketGetOutput(socket, `powershell.exe`);
+                    assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    await ssh.close();
+                });
+                it("sendCommandNoExpect", async () => {
+                    let ssh = await makeConnection(user, 3000, 3);
+                    if (!ssh) {
+                        throw new Error("Unable to connect to target server");
+                    }
+                    let socket = await ssh.shell();
+
+                    await assert.doesNotReject(
+                        sendCommandNoExpect(socket, `hostname`, "Pineapples are great"),
+                        "Unable to check for not expect output"
+                    );
+
+                    await ssh.close();
+                });
+            });
+        }
 
         describe("SSH Key", () => {
             it("Can deploy to Server", async () => {
