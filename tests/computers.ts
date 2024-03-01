@@ -173,6 +173,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.20",
+        Name: "Windows Server 2008",
+        "OS Type": "windows",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Windows Server 2008",
+                ipaddress: "192.168.15.20",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Windows Server 2008",
+                username: "Administrator",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
