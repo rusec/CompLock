@@ -557,7 +557,11 @@ class DataBase {
      *
      * @returns {Promise<string | false>} A promise that resolves to the master password.
      */
-    async readPassword() {
+    async readPassword(): Promise<string | false> {
+        if (!this.ready) {
+            await delay(1000);
+            return await this.readPassword();
+        }
         try {
             return this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), this._getPKey(""));
         } catch (error) {
