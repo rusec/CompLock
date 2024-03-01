@@ -168,8 +168,8 @@ for (let computer of computers) {
                         throw new Error("Unable to connect to target server");
                     }
                     let socket = await ssh.shell();
-                    let result = await sendCommand(socket, "exit", true);
-                    assert.ok(result.includes("exit"), "Didn't get expected output: " + result);
+                    let result = await sendCommand(socket, "echo hello", true);
+                    assert.ok(result.includes("echo"), "Didn't get expected output: " + result);
                     await ssh.close();
                 });
             });
