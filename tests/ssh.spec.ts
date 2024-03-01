@@ -128,16 +128,6 @@ for (let computer of computers) {
         });
         if (computer["OS Type"] == "windows") {
             describe("Socket Commands", () => {
-                it("sendCommand", async () => {
-                    let ssh = await makeConnection(user, 3000, 3);
-                    if (!ssh) {
-                        throw new Error("Unable to connect to target server");
-                    }
-                    let socket = await ssh.shell();
-                    let result = await sendCommand(socket, "exit", true);
-                    assert.ok(result.includes("exit"), "Didn't get expected output: " + result);
-                    await ssh.close();
-                });
                 it("sendCommandExpect", async () => {
                     let ssh = await makeConnection(user, 3000, 3);
                     if (!ssh) {
@@ -170,6 +160,16 @@ for (let computer of computers) {
                         "Unable to check for not expect output"
                     );
 
+                    await ssh.close();
+                });
+                it("sendCommand", async () => {
+                    let ssh = await makeConnection(user, 3000, 3);
+                    if (!ssh) {
+                        throw new Error("Unable to connect to target server");
+                    }
+                    let socket = await ssh.shell();
+                    let result = await sendCommand(socket, "exit", true);
+                    assert.ok(result.includes("exit"), "Didn't get expected output: " + result);
                     await ssh.close();
                 });
             });
