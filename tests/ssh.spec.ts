@@ -12,7 +12,6 @@ dotenv.config();
 const defaultPassword = process.env.DEFAULT;
 
 for (let computer of computers) {
-    console.log("\n\n\n");
     describe(`SSH ${computer["OS Type"]} ${computer.Name} ${computer.ipaddress}`, () => {
         let user = computer.users[0];
         if (!user) {
