@@ -6,6 +6,7 @@ import { detect_hostname, detect_os, ejectSSHkey, makeConnection, removeSSHkey, 
 import { computers } from "./computers";
 import assert from "assert";
 import dotenv from "dotenv";
+import { Channel } from "ssh2";
 dotenv.config();
 
 const defaultPassword = process.env.DEFAULT;
@@ -133,9 +134,10 @@ for (let computer of computers) {
                     if (!ssh) {
                         throw new Error("Unable to connect to target server");
                     }
-                    let socket = await ssh.shell();
+                    let socket: Channel = await ssh.shell();
                     let result = await sendCommandExpect(socket, `powershell.exe`, `> `);
                     assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    socket.close();
                     await ssh.close();
                 });
                 it("socketGetOutput", async () => {
@@ -143,9 +145,10 @@ for (let computer of computers) {
                     if (!ssh) {
                         throw new Error("Unable to connect to target server");
                     }
-                    let socket = await ssh.shell();
+                    let socket: Channel = await ssh.shell();
                     let result = await socketGetOutput(socket, `powershell.exe`);
                     assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    socket.close();
                     await ssh.close();
                 });
                 it("sendCommandNoExpect", async () => {
@@ -153,13 +156,12 @@ for (let computer of computers) {
                     if (!ssh) {
                         throw new Error("Unable to connect to target server");
                     }
-                    let socket = await ssh.shell();
-
+                    let socket: Channel = await ssh.shell();
                     await assert.doesNotReject(
                         sendCommandNoExpect(socket, `hostname`, "Pineapples are great"),
                         "Unable to check for not expect output"
                     );
-
+                    socket.close();
                     await ssh.close();
                 });
                 it("sendCommand", async () => {
@@ -167,9 +169,10 @@ for (let computer of computers) {
                     if (!ssh) {
                         throw new Error("Unable to connect to target server");
                     }
-                    let socket = await ssh.shell();
+                    let socket: Channel = await ssh.shell();
                     let result = await sendCommand(socket, "echo hello");
                     assert.ok(result.includes("echo"), "Didn't get expected output: " + result);
+                    socket.close();
                     await ssh.close();
                 });
             });
