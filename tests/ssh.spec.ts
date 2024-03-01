@@ -137,7 +137,9 @@ for (let computer of computers) {
                     let socket: Channel = await ssh.shell();
                     let result = await sendCommandExpect(socket, `powershell.exe`, `> `);
                     assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    socket.end();
                     socket.close();
+                    socket.destroy();
                     await ssh.close();
                 });
                 it("socketGetOutput", async () => {
@@ -148,7 +150,9 @@ for (let computer of computers) {
                     let socket: Channel = await ssh.shell();
                     let result = await socketGetOutput(socket, `powershell.exe`);
                     assert.ok(result.includes("> "), "Didn't get expected output: " + result);
+                    socket.end();
                     socket.close();
+                    socket.destroy();
                     await ssh.close();
                 });
                 it("sendCommandNoExpect", async () => {
@@ -161,7 +165,10 @@ for (let computer of computers) {
                         sendCommandNoExpect(socket, `hostname`, "Pineapples are great"),
                         "Unable to check for not expect output"
                     );
+                    socket.end();
                     socket.close();
+                    socket.destroy();
+
                     await ssh.close();
                 });
                 it("sendCommand", async () => {
@@ -172,7 +179,10 @@ for (let computer of computers) {
                     let socket: Channel = await ssh.shell();
                     let result = await sendCommand(socket, "echo hello");
                     assert.ok(result.includes("echo"), "Didn't get expected output: " + result);
+                    socket.end();
                     socket.close();
+                    socket.destroy();
+
                     await ssh.close();
                 });
             });
