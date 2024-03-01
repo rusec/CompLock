@@ -152,6 +152,27 @@ const computers: Server[] = [
             },
         ],
     },
+    {
+        ipaddress: "192.168.15.18",
+        Name: "Windows Server 2022",
+        "OS Type": "windows",
+        domain: "",
+        password_changes: 0,
+        users: [
+            {
+                domain: "",
+                failedPasswords: [],
+                hostname: "Windows Server 2022",
+                ipaddress: "192.168.15.18",
+                password: defaultPassword || "Password123",
+                password_changes: 0,
+                ssh_key: false,
+                user_id: "Windows Server 2022",
+                username: "Administrator",
+                oldPasswords: [],
+            },
+        ],
+    },
 ];
 
 export { computers };
