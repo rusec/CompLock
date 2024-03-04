@@ -34,7 +34,7 @@ async function runCommandNotExpect(conn: SSH2CONN, command: string, not_expected
         }
         return true;
     } catch (error: any) {
-        if (error.trim().toLowerCase().includes(not_expected)) {
+        if (error.toString().trim().toLowerCase().includes(not_expected)) {
             return typeof error === "string" ? replaceAll(error, "\n", " ") : replaceAll(error.message, "\n", " ");
         }
         return true;

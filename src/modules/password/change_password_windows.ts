@@ -128,15 +128,10 @@ type check_report = {
     forceNetUser: boolean;
 };
 async function check(conn: SSH2CONN): Promise<check_report> {
-    var passed = 2;
+    var passed = 1;
     var forceNetUser = false;
     conn.log("Running Checks");
 
-    let os_check = await conn.exec("echo %OS%");
-    if (os_check.trim() != "Windows_NT") {
-        conn.error(`Windows check error GOT ${os_check} WANTED Windows_NT, Please check for environment vars`);
-        passed--;
-    }
     let get_local_check;
 
     try {

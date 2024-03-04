@@ -131,7 +131,6 @@ class DataBase {
             if (!fs.existsSync(this.filePath)) {
                 // If not, create the muffins folder
                 fs.mkdirSync(this.filePath);
-                ``;
             } else {
                 // If muffins path exists, check if it's a directory
                 const stats = fs.statSync(this.filePath);

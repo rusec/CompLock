@@ -99,6 +99,7 @@ async function makeConnection(user: User, timeout = 3000, retryCount = 5, retryD
 
 // Note remove permanent connection
 //NOTE : MAKE PUBLIC KEY OUTPUT
+//NOTE: remove ssh check for windows bitvise due to bitvise having a different ways it handles ssh keys
 
 async function removeSSHkey(conn: SSH2CONN, os_type: options): Promise<boolean> {
     const ssh_key = await runningDB.getPublicSSHKey();
@@ -157,14 +158,14 @@ async function removeSSHkey(conn: SSH2CONN, os_type: options): Promise<boolean> 
             break;
     }
     conn.log("Removed SSH Key");
-    return !(await testSSH(conn));
+    return !(await testSSHKey(conn));
 }
 /**
  *
  * @param conn
  * @returns Should return true if it can connect using the public key
  */
-async function testSSH(conn: SSH2CONN) {
+async function testSSHKey(conn: SSH2CONN) {
     try {
         conn.info("Testing SSH Private Key");
         const sshConfig: SSHConfig = {
@@ -226,15 +227,18 @@ async function testPassword(conn: SSH2CONN, password: string) {
 //should check for ssh key in the folder, if it doesn't exist inject it.
 //will try to ssh using the key, if it cant it will eject one more time
 //TO DO DARWIN
+//TO DO Move Windows Functions to another another function
 async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined | boolean, trials: number = 0): Promise<boolean> {
-    if (trials > 1) {
-        return false;
-    }
+    if (os_type === "windows") return await injectSSHKeyWindows(conn);
+    if (trials > 1) return false;
+
     const ssh_key = await runningDB.getPublicSSHKey();
     if (force) {
         await injectKey();
         return await test();
     }
+
+    // Tests if ssh key is already on target computer
     switch (os_type) {
         case "linux":
             var ssh_keys = await getOutput(conn, commands.ssh.echo.linux);
@@ -256,18 +260,18 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
             break;
         case "darwin":
             break;
-        case "windows":
-            var ssh_keys = await getOutput(conn, commands.ssh.echo.windows);
-            if (ssh_keys.includes("Timed")) {
-                conn.warn(
-                    "Using CMD to inject make sure %ProgramData%\\ssh\\administrators_authorized_keys Exists, We are unable to detect completion"
-                );
-                return await injectSSHKeyWindowsCMD(conn, "windows");
-            }
-            if (ssh_keys.includes(ssh_key)) {
-                return await test();
-            }
-            break;
+        // case "windows":
+        //     var ssh_keys = await getOutput(conn, commands.ssh.echo.windows);
+        //     if (ssh_keys.includes("Timed")) {
+        //         conn.warn(
+        //             "Using CMD to inject make sure %ProgramData%\\ssh\\administrators_authorized_keys Exists, We are unable to detect completion"
+        //         );
+        //         return await injectSSHKeyWindowsCMD(conn, "windows");
+        //     }
+        //     if (ssh_keys.includes(ssh_key)) {
+        //         return await test();
+        //     }
+        //     break;
     }
     conn.log("Ejecting SSH Key");
     await injectKey();
@@ -276,7 +280,7 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
     // Tries to connect to the ssh with the private key
     async function test() {
         try {
-            let result = await testSSH(conn);
+            let result = await testSSHKey(conn);
             if (result) return true;
             else {
                 trials = trials + 1;
@@ -289,9 +293,9 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
     }
     async function injectKey() {
         switch (os_type) {
-            case "windows":
-                await runCommandNoExpect(conn, commands.ssh.eject.windows(ssh_key));
-                break;
+            // case "windows":
+            //     await runCommandNoExpect(conn, commands.ssh.eject.windows(ssh_key));
+            //     break;
             case "sunos":
                 await runCommandNoExpect(conn, commands.ssh.eject.sunos(ssh_key));
                 break;
@@ -300,6 +304,54 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
             case "darwin":
                 await runCommandNoExpect(conn, commands.ssh.eject.linux(ssh_key));
                 break;
+        }
+    }
+}
+async function injectSSHKeyWindows(conn: SSH2CONN): Promise<boolean> {
+    const ssh_key = await runningDB.getPublicSSHKey();
+
+    let shell_type_output = await getOutput(conn, commands.windows_util.shell_type);
+    let shell_type = shell_type_output.includes("CMD") ? "CMD" : "Powershell";
+    conn.log("SSH Key Inject with " + shell_type);
+    let openSshExistOutput = await getOutput(conn, shell_type == "CMD" ? commands.windows_util.openSSH.cmd : commands.windows_util.openSSH.ps);
+    let openSSHExist = openSshExistOutput.includes("Exist");
+
+    if (openSSHExist) {
+        var ssh_keys = await getOutput(conn, commands.ssh.echo.windows);
+        if (ssh_keys.includes(ssh_key)) {
+            return await test();
+        }
+    }
+
+    await inject();
+    return await test();
+
+    async function test(trails = 0): Promise<boolean> {
+        if (trails > 2) return false;
+
+        try {
+            let result = await testSSHKey(conn);
+            if (result) return true;
+            else {
+                await inject();
+                trails = trails + 1;
+                return await test(trails);
+            }
+        } catch (error) {
+            await inject();
+            trails = trails + 1;
+            return await test(trails);
+        }
+    }
+    async function inject() {
+        if (openSSHExist) {
+            await runCommandNoExpect(conn, commands.ssh.eject.windows(ssh_key));
+        } else {
+            //BitVise Requires use of authorized_keys
+            await runCommandNoExpect(
+                conn,
+                shell_type == "CMD" ? commands.ssh.eject.home.windows_cmd(ssh_key) : commands.ssh.eject.home.windows(ssh_key)
+            );
         }
     }
 }
@@ -326,7 +378,7 @@ async function injectSSHKeyWindowsCMD(conn: SSH2CONN, os_type: options, force?: 
 
     async function test() {
         try {
-            let result = await testSSH(conn);
+            let result = await testSSHKey(conn);
             if (result) return true;
             else {
                 trials = trials + 1;

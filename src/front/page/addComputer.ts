@@ -31,9 +31,9 @@ const addComputer = async function () {
         },
     ]);
     await trySSH();
-    async function trySSH() {
+    async function trySSH(): Promise<void> {
         var computer_info = await scanSSH(ip, user, pass);
-
+        // console.log(computer_info);
         let success = false;
         if (typeof computer_info == "object") {
             await runningDB.addTargetAndUser(computer_info.hostname, ip, user, pass, computer_info.operatingSystem, computer_info.domain);
@@ -52,7 +52,7 @@ const addComputer = async function () {
             },
         ]);
         if (confirm) {
-            await trySSH();
+            return await trySSH();
         }
     }
 
