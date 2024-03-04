@@ -8,9 +8,9 @@ import { Home } from "../menu/home";
 import { pressEnter } from "../../modules/console/enddingModules";
 import options from "../../modules/util/options";
 const addComputer = async function () {
-    const { ip, user, pass } = await inquirer.prompt([
+    const { ip_input, user_input, pass_input }: { ip_input: string; user_input: string; pass_input: string } = await inquirer.prompt([
         {
-            name: "ip",
+            name: "ip_input",
             message: "please enter an ip:",
             type: "input",
             validate: (v) => {
@@ -20,17 +20,24 @@ const addComputer = async function () {
             },
         },
         {
-            name: "user",
+            name: "user_input",
             message: "please enter a username",
             type: "input",
         },
         {
-            name: "pass",
+            name: "pass_input",
             message: "please enter a password",
             type: "input",
         },
     ]);
+
+    const ip = ip_input.trim();
+    const user = user_input.trim();
+    const pass = pass_input.trim();
+    log(`Attempting connection to ${ip} using ${user}`, "info");
+
     await trySSH();
+
     async function trySSH(): Promise<void> {
         var computer_info = await scanSSH(ip, user, pass);
         // console.log(computer_info);

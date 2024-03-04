@@ -38,7 +38,7 @@ async function ShotGun() {
 
                 return true;
             },
-            message: "host ids (the last digit of the ip)",
+            message: "host ids (separated by spaces) (the last digit of the ip)",
         },
         {
             name: "usernames_string",
@@ -57,7 +57,8 @@ async function ShotGun() {
     let network_ip = ip_net.split(".");
     network_ip.pop();
     network_ip = network_ip.join(".").trim();
-    let hosts = hosts_ids.split(" ");
+    let hosts = expandHostIds(hosts_ids);
+
     var computers = hosts.map((value: string) => {
         value = value.trim();
         return network_ip + "." + value;
@@ -142,7 +143,9 @@ async function ShotGun() {
         try {
             var string = "\n";
             for (const computer of computers) {
-                string += `${computer.ip}     ${computer.name}\n`;
+                let computerInfo = await runningDB.getComputer(computer);
+                if (!computerInfo) continue;
+                string += `${computer}  ${computerInfo.Name}\n`;
             }
             if (process.platform === "linux" || process.platform === "darwin" || process.platform === "freebsd" || process.platform === "openbsd") {
                 await exec(`echo '${string}' | sudo tee -a /etc/hosts`);
@@ -158,5 +161,23 @@ async function ShotGun() {
     bar.stop();
     console.clear();
 }
+function expandHostIds(hosts_ids: string): string[] {
+    const hosts: string[] = [];
+    const ranges: string[] = hosts_ids.split(" ");
 
+    ranges.forEach((range) => {
+        const [start, end] = range.split("-").map(Number);
+        if (!end) {
+            if (isNaN(start)) return;
+            hosts.push(start.toString());
+        } else {
+            if (isNaN(start) || isNaN(end)) return;
+            for (let i = start; i <= end; i++) {
+                hosts.push(i.toString());
+            }
+        }
+    });
+
+    return hosts;
+}
 export { ShotGun as sshMenu };
