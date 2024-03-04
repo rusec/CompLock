@@ -102,8 +102,9 @@ async function makeConnection(user: User, timeout = 3000, retryCount = 5, retryD
 //NOTE: remove ssh check for windows bitvise due to bitvise having a different ways it handles ssh keys
 
 async function removeSSHkey(conn: SSH2CONN, os_type: options): Promise<boolean> {
-    const ssh_key = await runningDB.getPublicSSHKey();
     conn.log("Removing SSH Key");
+    if (os_type === "windows") return await removeSSHKeyWindows(conn);
+    const ssh_key = await runningDB.getPublicSSHKey();
 
     switch (os_type) {
         case "sunos":
@@ -143,19 +144,35 @@ async function removeSSHkey(conn: SSH2CONN, os_type: options): Promise<boolean> 
                 }
             }
             break;
-        case "windows":
-            var output = await runCommand(conn, commands.ssh.remove.windows(ssh_key), "successfully processed");
-            if (output.toString().includes("Timed")) {
-                conn.warn(
-                    "Using CMD to remove make sure %ProgramData%\\ssh\\administrators_authorized_keys Exists, We are unable to detect completion"
-                );
-                output = await runCommandNoExpect(conn, commands.ssh.remove.windows_cmd(ssh_key));
-            }
+    }
+    conn.log("Removed SSH Key");
+    return !(await testSSHKey(conn));
+}
+//Windows removal
+async function removeSSHKeyWindows(conn: SSH2CONN) {
+    const ssh_key = await runningDB.getPublicSSHKey();
 
-            if (!output) {
-                return false;
-            }
-            break;
+    let shell_type_output = await getOutput(conn, commands.windows_util.shell_type);
+    let shell_type = shell_type_output.includes("CMD") ? "CMD" : "Powershell";
+    conn.log("SSH Key removal with " + shell_type);
+    let openSshExistOutput = await getOutput(conn, shell_type == "CMD" ? commands.windows_util.openSSH.cmd : commands.windows_util.openSSH.ps);
+    let openSSHExist = openSshExistOutput.includes("Exist");
+    conn.log("Detected: " + openSSHExist ? "OpenSSH" : "BitVise");
+    if (openSSHExist) {
+        var output = await runCommand(conn, commands.ssh.remove.windows(ssh_key), "successfully processed");
+        if (output.toString().includes("Timed")) {
+            conn.warn("Using CMD to remove make sure %ProgramData%\\ssh\\administrators_authorized_keys Exists, We are unable to detect completion");
+            output = await runCommandNoExpect(conn, commands.ssh.remove.windows_cmd(ssh_key));
+        }
+    } else {
+        var output = await runCommand(
+            conn,
+            shell_type === "CMD" ? commands.ssh.remove.home.windows_cmd(ssh_key) : commands.ssh.remove.home.windows(ssh_key),
+            "successfully"
+        );
+        // return true always if OpenSSH is not there because BitVise doesn't have a command line interface to remove.
+        conn.warn("Removed SSH Key From Home (User Private Key Might Still be Active because BitVise)");
+        return true;
     }
     conn.log("Removed SSH Key");
     return !(await testSSHKey(conn));
@@ -260,18 +277,6 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
             break;
         case "darwin":
             break;
-        // case "windows":
-        //     var ssh_keys = await getOutput(conn, commands.ssh.echo.windows);
-        //     if (ssh_keys.includes("Timed")) {
-        //         conn.warn(
-        //             "Using CMD to inject make sure %ProgramData%\\ssh\\administrators_authorized_keys Exists, We are unable to detect completion"
-        //         );
-        //         return await injectSSHKeyWindowsCMD(conn, "windows");
-        //     }
-        //     if (ssh_keys.includes(ssh_key)) {
-        //         return await test();
-        //     }
-        //     break;
     }
     conn.log("Ejecting SSH Key");
     await injectKey();
@@ -293,9 +298,6 @@ async function injectSSHkey(conn: SSH2CONN, os_type: options, force?: undefined 
     }
     async function injectKey() {
         switch (os_type) {
-            // case "windows":
-            //     await runCommandNoExpect(conn, commands.ssh.eject.windows(ssh_key));
-            //     break;
             case "sunos":
                 await runCommandNoExpect(conn, commands.ssh.eject.sunos(ssh_key));
                 break;

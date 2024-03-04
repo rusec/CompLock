@@ -46,6 +46,12 @@ const commands = {
             linux: (ssh_key: string) => `ssh_key="${replaceAll(ssh_key, "/", "\\/")}" && sed -i "s/$ssh_key//g" ~/.ssh/authorized_keys`,
             sunos: (ssh_key: string) => `ssh_key="${replaceAll(ssh_key, "/", "\\/")}" && perl -ne '/$ssh_key/g' $HOME/.ssh/authorized_keys`,
             freebsd: (ssh_key: string) => `setenv ssh_key "${replaceAll(ssh_key, "/", "\\/")}" && sed -i "" "s/$ssh_key//g" ~/.ssh/authorized_keys`,
+            home: {
+                windows: (ssh_key: string) =>
+                    `powershell.exe -command \"$keyToRemove = \\"${ssh_key}\\";$authorizedKeysPath = Join-Path $env:USERPROFILE \\".ssh\\authorized_keys\\"; $authorizedKeysContent = Get-Content -Path $authorizedKeysPath; $authorizedKeysContent = $authorizedKeysContent -notmatch [regex]::Escape($keyToRemove); $authorizedKeysContent | Set-Content -Path $authorizedKeysPath; Write-Host \\"SSH key removal complete.\\"\"`,
+                windows_cmd: (ssh_key: string) =>
+                    `findstr /v "${ssh_key}" %USERPROFILE%\\.ssh\\authorized_keys > %USERPROFILE%\\.ssh\\authorized_keys.tmp && move /y %USERPROFILE%\\.ssh\\authorized_keys.tmp %USERPROFILE%\\.ssh\\authorized_keys && echo SSH key removal successfully.`,
+            },
         },
 
         echo: {
