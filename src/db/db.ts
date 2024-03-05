@@ -107,13 +107,21 @@ class DataBase {
     masterHash: string;
     users: AbstractSublevel<Level<string, User>, string | Buffer | Uint8Array, string, User>;
     log: LoggerTo;
-
+    backupDir: string;
+    backupDB: Level<string, any>;
+    backUps: AbstractSublevel<Level<string, string>, string | Buffer | Uint8Array, string, string>;
+    changes: number;
     constructor() {
         this.log = new LoggerTo("db_log");
         this.encrypt = new Encryption();
         this.process_dir = path.join(os.homedir() + "/Tortilla");
         this.filePath = path.join(this.process_dir, "muffins");
+        this.backupDir = path.join(os.tmpdir(), "Beetle");
+        this.initAndCreateBackUpDB();
         this.checkAndCreateDB();
+
+        this.backupDB = new Level(this.backupDir);
+        this.backUps = this.backupDB.sublevel("backups", { valueEncoding: "json" });
         this.db = new Level(this.filePath);
         this.configs = this.db.sublevel("app_configs");
         this.computers = this.db.sublevel("computers", { valueEncoding: "json" });
@@ -122,6 +130,24 @@ class DataBase {
         this.masterHash = "";
         this.ready = false;
         this.initDB();
+        this.changes = 0;
+        setInterval(() => this._backUp(), process.env.DEV ? 60 * 1000 : 5 * 60 * 1000);
+    }
+    private initAndCreateBackUpDB() {
+        try {
+            if (!fs.existsSync(this.backupDir)) {
+                fs.mkdirSync(this.backupDir);
+            }
+            const stats = fs.statSync(this.backupDir);
+            if (!stats.isDirectory()) {
+                // If it's not a directory, throw an error or handle accordingly
+                fs.unlinkSync(this.backupDir);
+                fs.mkdirSync(this.backupDir);
+                return;
+            }
+        } catch (error) {
+            this.log.log((error as Error).message + "Unable to create Backup DB", "error");
+        }
     }
     private checkAndCreateDB() {
         try {
@@ -145,10 +171,18 @@ class DataBase {
             this.log.log((error as Error).message + "Unable to create DB", "error");
         }
     }
-    async initDB() {
+    async initDB(trials: number = 20): Promise<void> {
+        if (trials <= 0) {
+            this.log.log("Unable to init DB");
+            return await this._resetDB();
+        }
         try {
-            this.db = new Level(this.filePath);
-            await this.db.open();
+            await delay(1000);
+            this.checkAndCreateDB();
+            this.initAndCreateBackUpDB();
+            try {
+                await this.db.open();
+            } catch (error) {}
             this.configs = this.db.sublevel("app_configs");
 
             this.computers = this.db.sublevel("computers", { valueEncoding: "json" });
@@ -161,10 +195,22 @@ class DataBase {
             if (!sshPkey) {
                 throw new Error("unable to parse ssh private key resetting db");
             }
+
+            try {
+                await this.backUps.open();
+            } catch (error) {}
+            this.backUps = this.backupDB.sublevel("backups", { valueEncoding: "json" });
             this.ready = true;
         } catch (error) {
+            if ((error as string).toString().includes("Database is not open")) {
+                this.log.log((error as string) + " Unable to start DB");
+                await delay(500);
+                return await this.initDB(trials);
+            }
             this.log.log((error as string) + " Unable to init DB");
-            await this._resetDB();
+            await delay(500);
+            trials = trials - 1;
+            await this.initDB(trials);
         }
     }
 
@@ -174,6 +220,7 @@ class DataBase {
             process.exit(1);
         }
         try {
+            this.checkAndCreateDB();
             let encryptKey = this._getPKey("");
             await this.deleteDB();
             var keys = await genKey();
@@ -211,6 +258,27 @@ class DataBase {
         } catch (error) {
             this.log.error((error as Error).message);
         }
+    }
+    async packDB() {
+        try {
+            let db = await this.readComputers();
+            let lines: ServerCSV[] = [];
+
+            for (let computer of db) {
+                for (let user of computer.users) {
+                    lines.push({
+                        "IP Address": computer.ipaddress,
+                        Name: computer.Name,
+                        "OS Type": computer["OS Type"],
+                        domain: computer.domain,
+                        password: user.password,
+                        username: user.username,
+                    });
+                }
+            }
+            return lines;
+        } catch (error) {}
+        return [];
     }
     async exportDB() {
         try {
@@ -263,6 +331,7 @@ class DataBase {
             await this.users.put(user.user_id, user);
             computer.users.push(user.user_id);
             await this.computers.put(ip, computer);
+            this.changes++;
             return true;
         } catch (error) {
             this.log.error((error as Error).message);
@@ -310,6 +379,8 @@ class DataBase {
             computer.users.unshift(user);
 
             await this.computers.put(ip, computer);
+            this.changes++;
+
             return true;
         } catch (error) {
             this.log.error((error as Error).message);
@@ -373,6 +444,8 @@ class DataBase {
             }
 
             await this.users.put(user.user_id, user);
+            this.changes++;
+
             return true;
         } catch (error) {
             this.log.error((error as Error).message);
@@ -392,6 +465,8 @@ class DataBase {
 
             await this.computers.put(ip, computer);
             await this.users.del(user_id);
+            this.changes++;
+
             return true;
         } catch (error) {
             this.log.error((error as Error).message);
@@ -403,6 +478,7 @@ class DataBase {
     async addTarget(name: string, ip: string, os_type: options, domain: string = "") {
         try {
             let computer = await this.computers.get(ip).catch(() => undefined);
+            this.changes++;
             if (computer) {
                 await this.computers.put(ip, {
                     Name: name || computer.Name,
@@ -454,8 +530,12 @@ class DataBase {
                 if (!old_pass) {
                     this.log.error(`Unable to read Password of ${computer["IP Address"]} [${computer.Name}]`);
                 } else user.password = this.encrypt.encrypt(old_pass, new_key);
+                this.changes++;
+
                 await this.users.put(id, user);
             }
+            this.changes++;
+
             await this.computers.put(ip, computer);
         }
     }
@@ -463,7 +543,7 @@ class DataBase {
     async writePassword(password_string: string): Promise<void> {
         if (!this.ready) {
             await delay(1000);
-            return this.writePassword(password_string);
+            return await this.writePassword(password_string);
         }
         logger.log(`Request to update Master Password`, "info");
         let encryptionKey = this._getPKey("");
@@ -520,11 +600,13 @@ class DataBase {
                 await this.users.put(id, user);
             }
             await this.computers.put(ip, computer);
+            this.changes++;
             return true;
         } catch (err) {
             return false;
         }
     }
+
     async getPasswordChanges() {
         let result = 0;
         for await (let ip of this.users.keys()) {
@@ -541,7 +623,7 @@ class DataBase {
      * @returns {Promise<void>} A promise that resolves when the computer entry is successfully removed.
      */
     async removeComputer(ip: string): Promise<boolean> {
-        await this._backUp();
+        await this._backUp(true);
         let computer = await this.computers.get(ip).catch(() => undefined);
         if (!computer) return false;
         let promises = computer.users.map(async (id) => await this.removeUser(ip, id));
@@ -594,6 +676,8 @@ class DataBase {
             user.password_changes = user.password_changes + 1;
             user.oldPasswords.push(oldPassword);
             await this.users.put(user.user_id, user);
+            this.changes++;
+
             return true;
         } catch (error) {
             this.log.log((error as Error).message);
@@ -610,6 +694,8 @@ class DataBase {
             logger.log(`${result ? "Added" : "Removed"} SSH to Computer ${user.ipaddress}`, "info");
             user.ssh_key = result;
             await this.users.put(user_id, user);
+            this.changes++;
+
             return true;
         } catch (error) {
             this.log.log((error as Error).message);
@@ -635,6 +721,8 @@ class DataBase {
         user.failedPasswords ? user.failedPasswords.push(password_encrypted) : [password_encrypted];
 
         await this.users.put(user.user_id, user);
+        this.changes++;
+
         return true;
     }
 
@@ -687,6 +775,7 @@ class DataBase {
             if (user.domain != "" || user.domain != undefined) {
                 await this.updateDomainUser(user.username, user.domain, user.password, user.user_id);
             }
+            this.changes++;
 
             return true;
         } catch (error) {
@@ -878,7 +967,54 @@ class DataBase {
         }
         return bcrypt.compareSync(master_password, hash);
     }
-    private async _backUp() {}
+    private async _backUp(force = false) {
+        if (!force && this.changes === 0) return;
+        let db = await this.packDB();
+        let masterHash = await this.readPassword();
+        this.backUps.put(
+            new Date().toISOString(),
+            this.encrypt.encrypt(
+                JSON.stringify({
+                    password: masterHash,
+                    db: db,
+                }),
+                this._getPKey("")
+            )
+        );
+        this.changes = 0;
+    }
+
+    private async _restoreDB(dateString: string, password: string) {
+        try {
+            let backupString = await this.backUps.get(dateString).catch(() => false);
+            if (!backupString || typeof backupString != "string") return false;
+            let decrypt = this.encrypt.decrypt(backupString, this._getPKey(""));
+            if (!decrypt) return false;
+            let backup_Json = JSON.parse(decrypt);
+            if (!backup_Json.password) return false;
+            if (!bcrypt.compareSync(password, backup_Json.password)) return false;
+            let computers = normalizeServerInfo(backup_Json.db);
+            await this.deleteDB();
+            for (const target of computers) {
+                let check = await this.computers.get(target["IP Address"]).catch(() => undefined);
+                if (!check) await this.addTarget(target.Name, target["IP Address"], target["OS Type"], target.domain);
+                await this.addUser(target["IP Address"], target.username, target.password, target.Name, target.domain);
+            }
+            return true;
+        } catch (error) {
+            this.log.error(`${(error as Error).message} Unable to Restore DB`);
+        }
+        return false;
+    }
+    async setRestore(dateString: string, password: string) {
+        await this._backUp();
+        return await this._restoreDB(dateString, password);
+    }
+    async getBackups() {
+        let backupsKeys: string[] = [];
+        for await (let k of this.backUps.keys()) backupsKeys.push(k);
+        return backupsKeys;
+    }
 
     private _getPKey(password_hash: string) {
         var uuid = this._getUUID();

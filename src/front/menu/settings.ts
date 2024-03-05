@@ -9,6 +9,7 @@ import fs from "fs";
 import { checkPassword } from "../../modules/util/checkPassword";
 import { mapDateString } from "../../modules/util/util";
 import { pressEnter } from "../../modules/console/enddingModules";
+import { restoreMenu } from "../page/backup";
 async function Settings() {
     const { program } = await inquirer.prompt([
         {
@@ -24,6 +25,7 @@ async function Settings() {
                 new inquirer.Separator("Data Setup"),
                 "Load CSV",
                 "Export DB",
+                "Restore DB",
                 new inquirer.Separator("SSH"),
                 { name: "Display Public Key", value: "display_key" },
                 new inquirer.Separator(),
@@ -54,6 +56,11 @@ async function Settings() {
         case "Load CSV":
             await checkPassword();
             await runningDB.readCSV();
+            break;
+        case "Restore DB":
+            await checkPassword();
+            await restoreMenu();
+            await pressEnter();
             break;
         case "display_key":
             var ssh_key = await runningDB.getPublicSSHKey();

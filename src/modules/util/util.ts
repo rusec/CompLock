@@ -55,7 +55,7 @@ function replaceAll(string: string, search: string, replace: string) {
     return string.split(search).join(replace);
 }
 function mapDateString(inputString: string) {
-    const dateObject = new Date(inputString.replace(/_/g, ":").replace(/T/, " "));
+    const dateObject = new Date(inputString);
     const formattedDate = `${dateObject.getFullYear()}/${(dateObject.getMonth() + 1).toString().padStart(2, "0")}/${dateObject
         .getDate()
         .toString()
