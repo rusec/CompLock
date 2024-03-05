@@ -117,7 +117,7 @@ class DataBase {
         this.process_dir = path.join(os.homedir() + "/Tortilla");
         this.filePath = path.join(this.process_dir, "muffins");
         this.backupDir = path.join(os.tmpdir(), "Beetle");
-        this.initAndCreateBackUpDB();
+        this.checkAndCreateBackUpDB();
         this.checkAndCreateDB();
 
         this.backupDB = new Level(this.backupDir);
@@ -133,7 +133,7 @@ class DataBase {
         this.changes = 0;
         setInterval(() => this._backUp(), process.env.DEV ? 60 * 1000 : 5 * 60 * 1000);
     }
-    private initAndCreateBackUpDB() {
+    private checkAndCreateBackUpDB() {
         try {
             if (!fs.existsSync(this.backupDir)) {
                 fs.mkdirSync(this.backupDir);
@@ -177,14 +177,13 @@ class DataBase {
             process.exit(1);
         }
         if (trials <= 10) {
-            console.log("new Level");
             this.backupDB = new Level(this.backupDir);
             this.db = new Level(this.filePath);
         }
         try {
             await delay(500);
             this.checkAndCreateDB();
-            this.initAndCreateBackUpDB();
+            this.checkAndCreateBackUpDB();
             try {
                 await this.db.open();
             } catch (error) {}
@@ -1014,7 +1013,7 @@ class DataBase {
         return false;
     }
     async setRestore(dateString: string, password: string) {
-        await this._backUp();
+        await this._backUp(true);
         return await this._restoreDB(dateString, password);
     }
     async getBackups() {
