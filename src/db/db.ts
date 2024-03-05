@@ -171,10 +171,14 @@ class DataBase {
             this.log.log((error as Error).message + "Unable to create DB", "error");
         }
     }
-    async initDB(trials: number = 20): Promise<void> {
+    async initDB(trials: number = 30): Promise<void> {
         if (trials <= 0) {
-            this.log.log("Unable to init DB");
-            return await this._resetDB();
+            this.log.log(" Unable to init DB");
+            process.exit(1);
+        }
+        if (trials <= 10) {
+            this.backupDB = new Level(this.backupDir);
+            this.db = new Level(this.filePath);
         }
         try {
             await delay(1000);
@@ -205,6 +209,7 @@ class DataBase {
             if ((error as string).toString().includes("Database is not open")) {
                 this.log.log((error as string) + " Unable to start DB");
                 await delay(500);
+                trials = trials - 1;
                 return await this.initDB(trials);
             }
             this.log.log((error as string) + " Unable to init DB");
