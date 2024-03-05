@@ -177,11 +177,12 @@ class DataBase {
             process.exit(1);
         }
         if (trials <= 10) {
+            console.log("new Level");
             this.backupDB = new Level(this.backupDir);
             this.db = new Level(this.filePath);
         }
         try {
-            await delay(1000);
+            await delay(500);
             this.checkAndCreateDB();
             this.initAndCreateBackUpDB();
             try {
@@ -214,8 +215,9 @@ class DataBase {
             }
             this.log.log((error as string) + " Unable to init DB");
             await delay(500);
+            await this._resetDB();
             trials = trials - 1;
-            await this.initDB(trials);
+            return await this.initDB(trials);
         }
     }
 
