@@ -3,7 +3,7 @@ import clear from "clear";
 import "colors";
 import runningDB from "../../db/db";
 import { edit } from "../page/editor";
-import { runScript } from "../page/passwordScript";
+import { runScript, runScriptNetworkSelect } from "../page/passwordScript";
 import { checkPassword } from "../../modules/util/checkPassword";
 import { Settings } from "./settings";
 import { utilsPage } from "./utilsPage";
@@ -56,6 +56,16 @@ async function Home() {
             await checkPassword();
             runScript();
             break;
+        case "Run Password Changer Network":
+            await clear();
+            await checkPassword();
+            runScriptNetworkSelect();
+            break;
+        case "Run Password Network TEST":
+            await clear();
+            await checkPassword();
+            runScriptNetworkSelect(true);
+            break;
         case "Run Password TEST":
             await clear();
             await checkPassword();
@@ -90,6 +100,8 @@ async function Home() {
                 new inquirer.Separator(),
                 new inquirer.Separator("Passwords"),
                 "Run Password Changer",
+                "Run Password Changer Network",
+                "Run Password Network TEST",
                 "Run Password TEST",
                 "Utils",
                 new inquirer.Separator(),
@@ -109,6 +121,7 @@ async function Home() {
                 new inquirer.Separator(),
                 new inquirer.Separator("Passwords"),
                 "Run Password Changer",
+                "Run Password Changer Network",
                 "Utils",
                 new inquirer.Separator(),
                 new inquirer.Separator("Computers"),

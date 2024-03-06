@@ -974,7 +974,6 @@ class DataBase {
         return bcrypt.compareSync(master_password, hash);
     }
     private async _backUp(force = false) {
-        if (!force && this.changes === 0) return;
         let db = await this.packDB();
         let masterHash = await this.readPassword();
         this.backUps.put(
