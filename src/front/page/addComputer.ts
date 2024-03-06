@@ -40,12 +40,10 @@ const addComputer = async function () {
 
     async function trySSH(): Promise<void> {
         var computer_info = await scanSSH(ip, user, pass);
-        // console.log(computer_info);
         let success = false;
         if (typeof computer_info == "object") {
-            await runningDB.addTargetAndUser(computer_info.hostname, ip, user, pass, computer_info.operatingSystem, computer_info.domain);
-            log(`Added`, "success");
-            success = true;
+            success = await runningDB.addTargetAndUser(computer_info.hostname, ip, user, pass, computer_info.operatingSystem, computer_info.domain);
+            if (success) log(`Added`, "success");
         } else {
             log(`Unable to reach computer, Not Added`, "error");
         }

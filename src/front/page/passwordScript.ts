@@ -305,7 +305,7 @@ async function runScriptNetworkSelect(debug?: boolean) {
             return false;
         });
 
-        log(`Selected ${computers.length} targets`);
+        log(`Selected ${computers.length} targets on ${networks.join(" ")}`);
 
         const { seed } = await inquirer.prompt([
             {
@@ -326,7 +326,6 @@ async function runScriptNetworkSelect(debug?: boolean) {
         const runningLog = results.reduce((prev, value) => {
             if (!value) return prev;
             if (typeof value == "boolean") return prev + "UNKNOWN\n";
-            // console.log(JSON.stringify(value))
 
             let results = (value as PromiseFulfilledResult<string[]>).value;
             let computerLine = "";

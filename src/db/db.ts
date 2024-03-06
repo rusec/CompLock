@@ -709,27 +709,32 @@ class DataBase {
         }
     }
     async writeUserFailedPassword(user_id: string, password: string) {
-        if (!password) {
+        try {
+            if (!password) {
+                return false;
+            }
+
+            let encryptKey = await this.getDbEncryptionKey();
+            if (!encryptKey) {
+                this.log.log("Unable to get encryption key");
+                return false;
+            }
+            let user = await this.users.get(user_id).catch(() => undefined);
+            if (!user) {
+                return false;
+            }
+
+            let password_encrypted = this.encrypt.encrypt(password, encryptKey);
+            user.failedPasswords ? user.failedPasswords.push(password_encrypted) : [password_encrypted];
+
+            await this.users.put(user.user_id, user);
+            this.changes++;
+
+            return true;
+        } catch (error) {
+            this.log.log((error as Error).message);
             return false;
         }
-
-        let encryptKey = await this.getDbEncryptionKey();
-        if (!encryptKey) {
-            this.log.log("Unable to get encryption key");
-            return false;
-        }
-        let user = await this.users.get(user_id).catch(() => undefined);
-        if (!user) {
-            return false;
-        }
-
-        let password_encrypted = this.encrypt.encrypt(password, encryptKey);
-        user.failedPasswords ? user.failedPasswords.push(password_encrypted) : [password_encrypted];
-
-        await this.users.put(user.user_id, user);
-        this.changes++;
-
-        return true;
     }
 
     private async updateDomainUser(username: string, domain: string, passwordHash: string, skip_id: string) {
