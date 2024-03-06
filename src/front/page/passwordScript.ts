@@ -121,76 +121,6 @@ async function runScript(debug?: boolean) {
 
         let results = await runScriptOn(computers, seed, debug);
 
-        // //Generate values
-        // const amountOfPasswords = computers.reduce((value, computer) => value + computer.users.length, 0);
-
-        // const passwordsArray = debug ? Array.from({ length: amountOfPasswords }, () => TEST_PASSWORD()) : generatePasses(amountOfPasswords, seed);
-
-        // const passwords = computers.map((computer) => {
-        //     let target_passwords = [];
-        //     for (let i = 0; i < computer.users.length; i++) {
-        //         let password = passwordsArray.pop();
-        //         if (!password) throw new Error("Not enough passwords");
-        //         target_passwords.push(password);
-        //     }
-        //     return target_passwords;
-        // });
-
-        // log(
-        //     debug
-        //         ? `Running DEBUG script on ${computers.length} computers ${amountOfPasswords} users`
-        //         : `Running script on ${computers.length} computers ${amountOfPasswords} ${amountOfPasswords} users`
-        // );
-        // logger.log(
-        //     debug
-        //         ? `Running DEBUG script on ${computers.length} computers ${amountOfPasswords} users`
-        //         : `Running script on ${computers.length} computers ${amountOfPasswords} users`
-        // );
-
-        // let bar = new Bar(amountOfPasswords);
-        // var then = new Date();
-
-        // let success = 0;
-        // let fails = 0;
-        // const promises = computers.map(async (target, i) => {
-        //     const target_passwords = passwords[i];
-        //     let results: (string | boolean)[] = [];
-        //     for await (const [index, user] of target.users.entries()) {
-        //         let result: string | boolean = false;
-        //         try {
-        //             let password = target_passwords[index];
-        //             if (!password) throw new Error("Unable to find password to change to");
-        //             const passwordResult = await changePasswordOf(target, user, password);
-        //             if (typeof passwordResult == "string" || passwordResult.error) {
-        //                 throw new Error(typeof passwordResult == "string" ? passwordResult : passwordResult.error ? passwordResult.error : "");
-        //             }
-        //             let wrote = await runningDB.writeUserResult(user.user_id, passwordResult);
-
-        //             bar.done(`${user.username} ${user.ipaddress} ${user.hostname}`);
-        //             success++;
-        //             if (!wrote) throw new Error("Unable to write user password");
-        //             result = `Success ${user.username} ${user.ipaddress} ${user.hostname}`;
-        //         } catch (error) {
-        //             let passwordTried = target_passwords[index];
-        //             if (passwordTried) await runningDB.writeUserFailedPassword(user.user_id, passwordTried);
-        //             bar.done(`Errored: ${user.username} ${user.ipaddress} ${user.hostname}`);
-        //             result = `Errored: ${user.username} ${user.ipaddress} ${user.hostname} ` + (error as Error).message;
-        //             fails++;
-        //         }
-        //         results.push(result);
-        //     }
-
-        //     return results;
-        // });
-
-        // var results = await Promise.allSettled(promises);
-        // var now = new Date();
-
-        // var lapse_time = now.getTime() - then.getTime();
-        // logger.log(`Successfully changed passwords on ${success} of ${amountOfPasswords} in ${lapse_time} ms`, "info");
-
-        // console.log(`Successfully changed passwords on ${success} of ${amountOfPasswords} in ${lapse_time} ms`.green);
-
         const runningLog = results.reduce((prev, value) => {
             if (!value) return prev;
             if (typeof value == "boolean") return prev + "UNKNOWN\n";
@@ -307,13 +237,15 @@ async function runScriptNetworkSelect(debug?: boolean) {
 
         log(`Selected ${computers.length} targets on ${networks.join(" ")}`);
 
-        const { seed } = await inquirer.prompt([
-            {
-                name: "seed",
-                type: "input",
-                message: "Please enter a seed",
-            },
-        ]);
+        const { seed } = debug
+            ? { seed: "" }
+            : await inquirer.prompt([
+                  {
+                      name: "seed",
+                      type: "input",
+                      message: "Please enter a seed",
+                  },
+              ]);
 
         //Hold Original Log for later
         console.log = function (...args) {

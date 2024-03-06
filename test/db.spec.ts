@@ -119,6 +119,59 @@ describe("DataBase", () => {
             assert.ok(!result, "able to edit user which doesnt exit");
         });
     });
+    describe("writeUserResult", () => {
+        it("should be able to change user password and update failed passwords", async () => {
+            const ip = "192.168.2.4";
+            const os = "linux";
+            const hostname = "myhost";
+            const domain = "example.com";
+            const username = "username";
+            const password = "password";
+            await db.addTargetAndUser(hostname, ip, username, password, os, domain);
+            const user = await db.getUser("192.168.2.4", username);
+            if (!user) throw new Error("Unable to get user after insert");
+            await db.writeUserResult(user.user_id, { error: false, password: "password123", ssh: true });
+            const user_after = await db.getUser("192.168.2.4", username);
+            if (!user_after) throw new Error("Unable to get user after password change");
+
+            assert.equal(user_after.password, "password123", "user password not changed");
+            assert.ok(user_after.oldPasswords.includes("password"), "password was not included in old passwords");
+        });
+        it("should change password of users on a domain", async () => {
+            const ip = "192.168.2.5";
+            const os = "linux";
+            const hostname = "myhost";
+            const domain = "example.com";
+            const username = "username";
+            const password = "password";
+            await db.addTargetAndUser(hostname, ip, username, password, os, domain);
+            const user = await db.getUser("192.168.2.4", username);
+            if (!user) throw new Error("Unable to get user after insert");
+            await db.writeUserResult(user.user_id, { error: false, password: "password1234", ssh: true });
+            const user_after = await db.getUser("192.168.2.5", username);
+            if (!user_after) throw new Error("Unable to get user after password change");
+            assert.equal(user_after.password, "password1234", "user password not changed");
+            assert.ok(user_after.oldPasswords.includes("password"), "password was not included in old passwords");
+        });
+        it("shouldn't change password of nondomain user", async () => {
+            const ip = "192.168.2.6";
+            const os = "linux";
+            const hostname = "myhost";
+            const domain = "";
+            const username = "username";
+            const password = "password";
+            await db.addTargetAndUser(hostname, ip, username, password, os, domain);
+            await db.addTargetAndUser(hostname, "192.168.2.7", "username", "password", "linux", "");
+
+            const user = await db.getUser("192.168.2.6", username);
+            if (!user) throw new Error("Unable to get user after insert");
+            await db.writeUserResult(user.user_id, { error: false, password: "password1234", ssh: true });
+            const user_after = await db.getUser("192.168.2.7", username);
+            if (!user_after) throw new Error("Unable to get user after password change");
+            assert.equal(user_after.password, "password", "user password not changed");
+            assert.ok(!user_after.oldPasswords.includes("password"), "password was included in old passwords");
+        });
+    });
     describe("editComputer", () => {
         it("should be able to change domain and os", async () => {
             let computer = await db.getComputer("192.168.1.3");

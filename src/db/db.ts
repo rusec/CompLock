@@ -738,6 +738,7 @@ class DataBase {
     }
 
     private async updateDomainUser(username: string, domain: string, passwordHash: string, skip_id: string) {
+        if (!domain || domain.length <= 1) return;
         for await (let id of this.users.keys()) {
             try {
                 if (skip_id == id) continue;
@@ -783,7 +784,7 @@ class DataBase {
 
             await this.users.put(user.user_id, user);
 
-            if (user.domain != "" || user.domain != undefined) {
+            if (user.domain && user.domain.length >= 1) {
                 await this.updateDomainUser(user.username, user.domain, user.password, user.user_id);
             }
             this.changes++;
