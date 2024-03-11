@@ -8,11 +8,12 @@ import { getOutput, runCommand } from "../util/run_command";
 
 async function changePasswordWin(server: Server, user: User, conn: SSH2CONN | false, username: string, password: string) {
     var then = new Date();
+    let headers = `[${server.ipaddress}] [${server.Name}] [${user.username}]`;
     if (!conn) {
         try {
             return await LDAPChangePassword(user, password);
         } catch (error: any) {
-            logger.log(`[${server.ipaddress}] [${server.Name}] [${user.username}] error ${error.message}`, "error");
+            logger.log(`${headers} error ${error.message}`, "error");
             return error.message ? (error as Error) : (error.message as string);
         }
     }
@@ -31,8 +32,8 @@ async function changePasswordWin(server: Server, user: User, conn: SSH2CONN | fa
             try {
                 return await LDAPChangePassword(user, password);
             } catch (error: any) {
-                logger.log(`[${server.ipaddress}] [${server.Name}] [${user.username}] LDAP Connection ${error.message}`, "warn");
-                conn.log("Fallback ssh");
+                logger.log(`${headers}  LDAP Connection ${error.message}`, "warn");
+                conn.log("Falling back to ssh");
                 return await changePasswordWinAD(conn, stripDomain(username), password);
             }
         }
