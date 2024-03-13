@@ -184,6 +184,7 @@ class DataBase {
             await delay(500);
             this.checkAndCreateDB();
             this.checkAndCreateBackUpDB();
+
             try {
                 await this.db.open();
             } catch (error) {}
@@ -202,7 +203,9 @@ class DataBase {
 
             try {
                 await this.backUps.open();
-            } catch (error) {}
+            } catch (error) {
+                this.log.log((error as string) + " Unable to Open DB");
+            }
             this.backUps = this.backupDB.sublevel("backups", { valueEncoding: "json" });
             this.ready = true;
         } catch (error) {
@@ -227,7 +230,7 @@ class DataBase {
         }
         try {
             this.checkAndCreateDB();
-            let encryptKey = this._getPKey("");
+            const encryptKey = this._getPKey("");
             await this.deleteDB();
             var keys = await genKey();
             await this.configs.put("privateKey", this.encrypt.encrypt(keys.key, encryptKey));
@@ -246,23 +249,26 @@ class DataBase {
         await this.users.clear();
     }
     async readCSV(): Promise<void> {
-        let encryptionKey = this._getPKey("");
         try {
-            let passwd_hash = this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), encryptionKey);
-            if (!passwd_hash) {
-                throw new Error("no master password");
-            }
+            const encryptionKey = this._getPKey("");
+
+            const passwd_hash = this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), encryptionKey);
+            if (!passwd_hash) throw new Error("no master password");
+
             await this.deleteDB();
+
             let jsonArray = await csv().fromFile("./computers.csv");
             let computers = normalizeServerInfo(jsonArray);
+
             for (const target of computers) {
                 let check = await this.computers.get(target["IP Address"]).catch(() => undefined);
                 if (!check) await this.addTarget(target.Name, target["IP Address"], target["OS Type"], target.domain);
                 await this.addUser(target["IP Address"], target.username, target.password, target.Name, target.domain);
             }
+
             logger.log("Read computers from CSV", "info");
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.error(`Unable to read CSV ` + (error as Error).message);
         }
     }
     async packDB() {
@@ -303,16 +309,18 @@ class DataBase {
                     });
                 }
             }
+            this.log.log(`Exported DB with ${db.length} computers`);
             fs.writeFileSync("./computers.csv", json2csv(lines), "utf-8");
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to export db ` + (error as Error).message);
         }
     }
 
     async addUser(ip: string, username: string, password: string, hostname: string, domain: string = "") {
-        let encryptionKey = this._getPKey("");
         try {
-            let passwd_hash = this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), encryptionKey);
+            const encryptionKey = this._getPKey("");
+
+            const passwd_hash = this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), encryptionKey);
             if (!passwd_hash) {
                 throw new Error("no master password");
             }
@@ -334,16 +342,33 @@ class DataBase {
                 password_changes: 0,
                 ssh_key: false,
             };
-            await this.users.put(user.user_id, user);
             computer.users.push(user.user_id);
-            await this.computers.put(ip, computer);
+            await Promise.all([this.users.put(user.user_id, user), this.computers.put(ip, computer)]);
+
             this.changes++;
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to add user ${username} ` + (error as Error).message);
 
             return false;
         }
+    }
+    private async _decryptUser(user: User, key: string) {
+        let password = this.encrypt.decrypt(user.password, key);
+        if (password) user.password = password;
+        user.failedPasswords = user.failedPasswords.map((pass_hash: string) => {
+            if (typeof key == "boolean") return pass_hash;
+            let pass = this.encrypt.decrypt(pass_hash, key);
+            if (pass) return pass;
+            return pass_hash;
+        });
+        user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
+            if (typeof key == "boolean") return pass_hash;
+            let pass = this.encrypt.decrypt(pass_hash, key);
+            if (pass) return pass;
+            return pass_hash;
+        });
+        return user;
     }
     async getUserByID(id: string) {
         try {
@@ -354,23 +379,9 @@ class DataBase {
             let user = await this.users.get(id).catch(() => undefined);
             if (!user) throw new Error("User Not Found");
 
-            let password = this.encrypt.decrypt(user.password, encryptionKey);
-            if (password) user.password = password;
-            user.failedPasswords = user.failedPasswords.map((pass_hash: string) => {
-                if (typeof encryptionKey == "boolean") return pass_hash;
-                let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
-                if (pass) return pass;
-                return pass_hash;
-            });
-            user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
-                if (typeof encryptionKey == "boolean") return pass_hash;
-                let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
-                if (pass) return pass;
-                return pass_hash;
-            });
-            return user;
+            return await this._decryptUser(user, encryptionKey);
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to get User from id ${id} ` + (error as Error).message);
 
             return false;
         }
@@ -382,6 +393,7 @@ class DataBase {
 
             const user = computer.users.splice(admin_index, 1)[0];
             if (!user) throw new Error(`User ${admin_index} not found`);
+
             computer.users.unshift(user);
 
             await this.computers.put(ip, computer);
@@ -389,7 +401,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to set Admin ${ip} ${admin_index} ` + (error as Error).message);
 
             return false;
         }
@@ -398,34 +410,20 @@ class DataBase {
         try {
             let computer = await this.computers.get(ip).catch(() => undefined);
             if (!computer) throw new Error(`Computer ${ip} not found`);
+
             let encryptionKey = await this.getDbEncryptionKey();
-            if (!encryptionKey) {
-                throw new Error("Unable to get encryption key");
-            }
+            if (!encryptionKey) throw new Error("Unable to get encryption key");
+
             for await (let id of computer.users) {
                 let user = await this.users.get(id).catch(() => undefined);
-                if (!user) continue;
-                if (user.username != username) continue;
+                if (!user || user.username !== username) continue;
 
-                let password = this.encrypt.decrypt(user.password, encryptionKey);
-                if (password) user.password = password;
-                user.failedPasswords = user.failedPasswords.map((pass_hash: string) => {
-                    if (typeof encryptionKey == "boolean") return pass_hash;
-                    let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
-                    if (pass) return pass;
-                    return pass_hash;
-                });
-                user.oldPasswords = user.oldPasswords.map((pass_hash: string) => {
-                    if (typeof encryptionKey == "boolean") return pass_hash;
-                    let pass = this.encrypt.decrypt(pass_hash, encryptionKey);
-                    if (pass) return pass;
-                    return pass_hash;
-                });
-                return user;
+                return await this._decryptUser(user, encryptionKey);
             }
+
             return false;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to get user ${username} from ${ip} ` + (error as Error).message);
 
             return false;
         }
@@ -434,9 +432,7 @@ class DataBase {
     async editUser(user_id: string, username: string | undefined, domain: string | undefined) {
         try {
             let encryptionKey = await this.getDbEncryptionKey();
-            if (!encryptionKey) {
-                throw new Error("Unable to get encryption key");
-            }
+            if (!encryptionKey) throw new Error("Unable to get encryption key");
 
             let user = await this.users.get(user_id).catch(() => undefined);
             if (!user) throw new Error("User Not Found");
@@ -454,7 +450,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to edit ${user_id} ` + (error as Error).message);
 
             return false;
         }
@@ -464,18 +460,17 @@ class DataBase {
             let computer = await this.computers.get(ip).catch(() => undefined);
             if (!computer) throw new Error(`Computer ${ip} not found`);
 
-            let index = computer.users.findIndex((v) => user_id === v);
+            const index = computer.users.findIndex((v) => user_id === v);
             if (index == -1) throw new Error(`User ${user_id} not found`);
 
             computer.users = computer.users.filter((v) => v != user_id);
 
-            await this.computers.put(ip, computer);
-            await this.users.del(user_id);
+            await Promise.all([this.computers.put(ip, computer), this.users.del(user_id)]);
             this.changes++;
 
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to remove ${user_id} from ${ip} ` + (error as Error).message);
 
             return false;
         }
@@ -485,40 +480,42 @@ class DataBase {
         try {
             let computer = await this.computers.get(ip).catch(() => undefined);
             this.changes++;
+
+            let newData: ServerInfo = {
+                Name: name,
+                "IP Address": ip,
+                users: [],
+                "OS Type": os_type,
+                domain: domain,
+                password_changes: 0,
+            };
+
             if (computer) {
-                await this.computers.put(ip, {
-                    Name: name || computer.Name,
-                    "IP Address": ip,
-                    users: computer.users || [],
-                    "OS Type": os_type || computer["OS Type"],
-                    domain: domain || computer.domain,
-                    password_changes: computer.password_changes || 0,
-                });
-                return true;
-            } else {
-                await this.computers.put(ip, {
-                    Name: name,
-                    "IP Address": ip,
-                    users: [],
-                    "OS Type": os_type,
-                    domain: domain,
-                    password_changes: 0,
-                });
-                return true;
+                newData.Name = name || computer.Name;
+                newData.users = computer.users || [];
+                newData["OS Type"] = os_type || computer["OS Type"];
+                newData.domain = domain || computer.domain;
+                newData.password_changes = computer.password_changes || 0;
             }
+
+            await this.computers.put(ip, newData);
+            return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to add Target ${ip} ` + (error as Error).message);
             return false;
         }
     }
+
     async addTargetAndUser(name: string, ip: string, user: string, pass: string, os: options, domain: string) {
         try {
             let computer = await this.computers.get(ip).catch(() => undefined);
+
             if (!computer) await this.addTarget(name, ip, os, domain);
+
             await this.addUser(ip, user, pass, name, domain);
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.log(`Unable to add Target and User ${ip} ${user}` + (error as Error).message);
             return false;
         }
     }
@@ -526,16 +523,23 @@ class DataBase {
     async updateComputers(old_key: string, new_key: string) {
         for await (const ip of this.computers.keys()) {
             let computer = await this.computers.get(ip);
+
             for await (const id of computer.users) {
                 let user = await this.users.get(id).catch(() => undefined);
+
                 if (!user) {
                     computer.users = findAndRemove(computer.users, user);
                     continue;
                 }
+
                 let old_pass = this.encrypt.decrypt(user.password, old_key);
+
                 if (!old_pass) {
                     this.log.error(`Unable to read Password of ${computer["IP Address"]} [${computer.Name}]`);
-                } else user.password = this.encrypt.encrypt(old_pass, new_key);
+                    continue;
+                }
+
+                user.password = this.encrypt.encrypt(old_pass, new_key);
                 this.changes++;
 
                 await this.users.put(id, user);
@@ -552,20 +556,24 @@ class DataBase {
             return await this.writePassword(password_string);
         }
         logger.log(`Request to update Master Password`, "info");
+
         let encryptionKey = this._getPKey("");
         const hash = await bcryptPassword(password_string);
         const old_hash_encrypted = await this.configs.get("master_hash").catch(() => "");
-        //has old hash
+
+        // Decrypt the old hash
         const old_hash = this.encrypt.decrypt(old_hash_encrypted, encryptionKey);
+
         // unable to read old_hash means either corruption or no password and db is just init
         if (!old_hash || old_hash == "") {
             await this.configs.put("master_hash", this.encrypt.encrypt(hash, encryptionKey));
             await this._resetDB();
-            logger.log(`Reset Database with new password`, "error");
+            logger.log(`Reset Database with new password`, "warn");
             logger.log(`Database ready`, "info");
             this.ready = true;
             return;
         }
+
         await this.configs.put("master_hash", this.encrypt.encrypt(hash, encryptionKey));
         await this.updateComputers(this._getPKey(old_hash), this._getPKey(hash));
         logger.log(`Updated Database with new password`, "info");
@@ -582,9 +590,12 @@ class DataBase {
             if (os) {
                 computer["OS Type"] = os;
             }
+
             await this.computers.put(ip, computer);
             return true;
         } catch (err) {
+            this.log.log(`Unable to edit Computer  ${ip} ` + (err as Error).message);
+
             return false;
         }
     }
@@ -605,10 +616,13 @@ class DataBase {
                 user.hostname = hostname;
                 await this.users.put(id, user);
             }
+
             await this.computers.put(ip, computer);
             this.changes++;
             return true;
         } catch (err) {
+            this.log.log(`Unable to update Computer Hostname ${ip} ` + (err as Error).message);
+
             return false;
         }
     }
@@ -629,14 +643,22 @@ class DataBase {
      * @returns {Promise<void>} A promise that resolves when the computer entry is successfully removed.
      */
     async removeComputer(ip: string): Promise<boolean> {
-        await this._backUp(true);
-        let computer = await this.computers.get(ip).catch(() => undefined);
-        if (!computer) return false;
-        let promises = computer.users.map(async (id) => await this.removeUser(ip, id));
-        await Promise.allSettled(promises);
-        await this.computers.del(ip).catch(() => "");
-        logger.log(`Removed Computer ${ip}`, "info");
-        return true;
+        try {
+            await this._backUp(true);
+
+            let computer = await this.computers.get(ip).catch(() => undefined);
+            if (!computer) return false;
+
+            await Promise.allSettled(computer.users.map((id) => this.removeUser(ip, id)));
+            await this.computers.del(ip).catch(() => "");
+
+            logger.log(`Removed Computer ${ip}`, "info");
+            return true;
+        } catch (error) {
+            this.log.log(`Unable to removing Computer ${ip} ` + (error as Error).message);
+
+            return false;
+        }
     }
 
     /**
@@ -652,6 +674,8 @@ class DataBase {
         try {
             return this.encrypt.decrypt(await this.configs.get("master_hash").catch(() => ""), this._getPKey(""));
         } catch (error) {
+            this.log.log(`Unable to Read Master Password ` + (error as Error).message);
+
             return false;
         }
     }
@@ -686,8 +710,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.log((error as Error).message);
-
+            this.log.log(`Unable to write User Password ${user_id} ` + (error as Error).message);
             return false;
         }
     }
@@ -704,7 +727,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.log((error as Error).message);
+            this.log.log(`Unable to write ssh result ${user_id} ${result} ` + (error as Error).message);
             return false;
         }
     }
@@ -732,7 +755,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.log((error as Error).message);
+            this.log.log(`Unable to write failed password ${user_id} ` + (error as Error).message);
             return false;
         }
     }
@@ -753,7 +776,7 @@ class DataBase {
 
                 await this.users.put(user.user_id, user);
             } catch (error) {
-                this.log.error((error as Error).message);
+                this.log.error(`Unable to update ${username} ${domain} domain ` + (error as Error).message);
             }
         }
     }
@@ -791,7 +814,7 @@ class DataBase {
 
             return true;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.error(`Unable to write user results with ${user_id} ID ` + (error as Error).message);
 
             return false;
         }
@@ -845,7 +868,7 @@ class DataBase {
 
             return server;
         } catch (error) {
-            this.log.error((error as Error).message);
+            this.log.error(`Unable to get Computer with ${ip} ` + (error as Error).message);
             return false;
         }
     }
